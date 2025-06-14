@@ -9,6 +9,7 @@ import rateLimiter from "./middleware/rateLimiter.js";
 import { applySecurityMiddlewares } from "./middleware/security.js";
 import authRoutes from "./routes/authRoutes.js";
 import transactionRoutes from "./routes/transactionRoutes.js";
+import job from "./config/cron.js";
 
 dotenv.config();
 
@@ -16,6 +17,7 @@ const app = express();
 const port = process.env.PORT || 5000;
 const __dirname = path.resolve();
 
+job.start();
 // middleware
 app.use(cors());
 app.use(express.json()); // this middleware will parse JSON bodies: req.body
