@@ -30,11 +30,8 @@ router.post("/", createTransaction);
 router.put("/:id", updateTransaction);
 router.delete("/:id", deleteTransaction);
 router.delete("/", deleteManyTransactions); // bulk delete
-router.get("/transactions/summary/cards", getTransactionCardSummary);
-router.get("/transactions/summary/trends", getTransactionTrends);
-router.get(
-  "/transactions/summary/categories",
-  getTransactionCategoryPercentages
-);
+router.get("/summary/cards", getTransactionCardSummary);
+router.get("/summary/trends", getTransactionTrends);
+router.get("/summary/categories", getTransactionCategoryPercentages);
 
 export default router;

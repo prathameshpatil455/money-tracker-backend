@@ -165,7 +165,7 @@ export const getTransactionCardSummary = async (req, res) => {
 
 const generateEmptyTrendMap = (range) => {
   const now = dayjs();
-  let map = {};
+  const map = {};
 
   if (range === "weekly") {
     for (let i = 0; i < 7; i++) {
@@ -178,12 +178,9 @@ const generateEmptyTrendMap = (range) => {
       map[date] = { income: 0, expense: 0 };
     }
   } else if (range === "yearly") {
-    for (let i = 0; i < 12; i++) {
-      const date = now
-        .subtract(11 - i, "month")
-        .startOf("month")
-        .format("YYYY-MM");
-      map[date] = { income: 0, expense: 0 };
+    for (let i = 2; i >= 0; i--) {
+      const year = now.subtract(i, "year").format("YYYY");
+      map[year] = { income: 0, expense: 0 };
     }
   }
 
@@ -205,8 +202,8 @@ export const getTransactionTrends = async (req, res) => {
     startDate = now.startOf("year").toDate();
     groupBy = { $dateToString: { format: "%Y-%m", date: "$date" } };
   } else if (range === "yearly") {
-    startDate = now.subtract(11, "month").startOf("month").toDate();
-    groupBy = { $dateToString: { format: "%Y-%m", date: "$date" } };
+    startDate = now.subtract(1, "year").startOf("year").toDate(); // Past 3 years (including current)
+    groupBy = { $dateToString: { format: "%Y", date: "$date" } }; // ✅ Group by year
   }
 
   const match = {

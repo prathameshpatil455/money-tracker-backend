@@ -1,18 +1,25 @@
-import cron from "cron";
+import { CronJob } from "cron";
 import https from "https";
 
-const job = new cron.CronJob({
-  cronTime: "*/14 * * * *",
-  function() {
-    https.get(process.env.API_URL, (res) => {
-      if (res.statusCode === 200) {
-        console.log("API is running");
-      }
-      res.on("error", (error) => {
-        console.log(error);
+const job = new CronJob(
+  "*/14 * * * *",
+  () => {
+    console.log("Pinging server...");
+    https
+      .get(process.env.API_URL, (res) => {
+        if (res.statusCode === 200) {
+          console.log("API is running");
+        } else {
+          console.error("API response status:", res.statusCode);
+        }
+      })
+      .on("error", (err) => {
+        console.error("HTTP request failed:", err.message);
       });
-    });
   },
-});
+  null,
+  false,
+  "Asia/Kolkata"
+);
 
 export default job;
