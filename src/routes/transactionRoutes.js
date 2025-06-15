@@ -10,6 +10,9 @@ import {
   getTransactionCategories,
   getTransactionById,
   deleteManyTransactions,
+  getTransactionCardSummary,
+  getTransactionTrends,
+  getTransactionCategoryPercentages,
 } from "../controllers/transactionController.js";
 import { protect } from "../middleware/authMiddleware.js";
 
@@ -27,5 +30,11 @@ router.post("/", createTransaction);
 router.put("/:id", updateTransaction);
 router.delete("/:id", deleteTransaction);
 router.delete("/", deleteManyTransactions); // bulk delete
+router.get("/transactions/summary/cards", getTransactionCardSummary);
+router.get("/transactions/summary/trends", getTransactionTrends);
+router.get(
+  "/transactions/summary/categories",
+  getTransactionCategoryPercentages
+);
 
 export default router;

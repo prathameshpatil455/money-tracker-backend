@@ -1,4 +1,5 @@
 import Transaction from "../models/Transaction.js";
+import dayjs from "dayjs";
 
 export const getTransactions = async (req, res) => {
   const { page = 1, limit = 10, type, category, search, from, to } = req.query;
@@ -139,4 +140,170 @@ export const deleteManyTransactions = async (req, res) => {
   });
 
   res.json({ deletedCount: result.deletedCount });
+};
+
+export const getTransactionCardSummary = async (req, res) => {
+  const userId = req.user._id;
+
+  const [incomeAgg, expenseAgg] = await Promise.all([
+    Transaction.aggregate([
+      { $match: { user: userId, type: "income" } },
+      { $group: { _id: null, totalIncome: { $sum: "$amount" } } },
+    ]),
+    Transaction.aggregate([
+      { $match: { user: userId, type: "expense" } },
+      { $group: { _id: null, totalExpense: { $sum: "$amount" } } },
+    ]),
+  ]);
+
+  const totalIncome = incomeAgg[0]?.totalIncome || 0;
+  const totalExpense = expenseAgg[0]?.totalExpense || 0;
+  const balance = totalIncome - totalExpense;
+
+  res.json({ totalIncome, totalExpense, balance });
+};
+
+const generateEmptyTrendMap = (range) => {
+  const now = dayjs();
+  let map = {};
+
+  if (range === "weekly") {
+    for (let i = 0; i < 7; i++) {
+      const date = now.startOf("week").add(i, "day").format("YYYY-MM-DD");
+      map[date] = { income: 0, expense: 0 };
+    }
+  } else if (range === "monthly") {
+    for (let i = 0; i <= now.month(); i++) {
+      const date = now.startOf("year").add(i, "month").format("YYYY-MM");
+      map[date] = { income: 0, expense: 0 };
+    }
+  } else if (range === "yearly") {
+    for (let i = 0; i < 12; i++) {
+      const date = now
+        .subtract(11 - i, "month")
+        .startOf("month")
+        .format("YYYY-MM");
+      map[date] = { income: 0, expense: 0 };
+    }
+  }
+
+  return map;
+};
+
+export const getTransactionTrends = async (req, res) => {
+  const { range = "weekly" } = req.query;
+  const userId = req.user._id;
+  const now = dayjs();
+
+  let startDate = new Date();
+  let groupBy;
+
+  if (range === "weekly") {
+    startDate = now.startOf("week").toDate();
+    groupBy = { $dateToString: { format: "%Y-%m-%d", date: "$date" } };
+  } else if (range === "monthly") {
+    startDate = now.startOf("year").toDate();
+    groupBy = { $dateToString: { format: "%Y-%m", date: "$date" } };
+  } else if (range === "yearly") {
+    startDate = now.subtract(11, "month").startOf("month").toDate();
+    groupBy = { $dateToString: { format: "%Y-%m", date: "$date" } };
+  }
+
+  const match = {
+    user: userId,
+    date: { $gte: startDate },
+  };
+
+  const rawData = await Transaction.aggregate([
+    { $match: match },
+    {
+      $group: {
+        _id: {
+          date: groupBy,
+          type: "$type",
+        },
+        total: { $sum: "$amount" },
+      },
+    },
+    {
+      $group: {
+        _id: "$_id.date",
+        income: {
+          $sum: {
+            $cond: [{ $eq: ["$_id.type", "income"] }, "$total", 0],
+          },
+        },
+        expense: {
+          $sum: {
+            $cond: [{ $eq: ["$_id.type", "expense"] }, "$total", 0],
+          },
+        },
+      },
+    },
+    { $sort: { _id: 1 } },
+  ]);
+
+  // Fill missing days/months with 0s
+  const trendMap = generateEmptyTrendMap(range);
+
+  for (const entry of rawData) {
+    const date = entry._id;
+    trendMap[date] = {
+      income: entry.income || 0,
+      expense: entry.expense || 0,
+    };
+  }
+
+  const result = Object.entries(trendMap).map(([date, values]) => ({
+    date,
+    ...values,
+  }));
+
+  res.json(result);
+};
+
+export const getTransactionCategoryPercentages = async (req, res) => {
+  const userId = req.user._id;
+
+  const categoryAgg = await Transaction.aggregate([
+    { $match: { user: userId } },
+    {
+      $group: {
+        _id: { category: "$category", type: "$type" },
+        total: { $sum: "$amount" },
+      },
+    },
+  ]);
+
+  let incomeTotal = 0;
+  let expenseTotal = 0;
+  const incomeCategories = {};
+  const expenseCategories = {};
+
+  for (const entry of categoryAgg) {
+    const { category, type } = entry._id;
+    const total = entry.total;
+
+    if (type === "income") {
+      incomeTotal += total;
+      incomeCategories[category] = (incomeCategories[category] || 0) + total;
+    } else if (type === "expense") {
+      expenseTotal += total;
+      expenseCategories[category] = (expenseCategories[category] || 0) + total;
+    }
+  }
+
+  const income = Object.entries(incomeCategories).map(([category, amount]) => ({
+    category,
+    percentage: ((amount / incomeTotal) * 100).toFixed(2),
+  }));
+
+  const expense = Object.entries(expenseCategories).map(
+    ([category, amount]) => ({
+      category,
+      percentage: ((amount / expenseTotal) * 100).toFixed(2),
+    })
+  );
+
+  res.json({ income, expense });
 };
