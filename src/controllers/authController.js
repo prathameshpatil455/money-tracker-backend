@@ -12,13 +12,18 @@ export const register = async (req, res) => {
     const exists = await User.findOne({ email });
     if (exists) return res.status(400).json({ message: "User already exists" });
 
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const user = await User.create({ name, email, password: hashedPassword });
-
     // Directly use DiceBear avatar URL with name as seed
-    const avatarUrl = `https://api.dicebear.com/9.x/adventurer/svg?seed=${encodeURIComponent(
+    const avatarUrl = `https://api.dicebear.com/9.x/adventurer/png?seed=${encodeURIComponent(
       name
     )}`;
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const user = await User.create({
+      name,
+      email,
+      password: hashedPassword,
+      userImage: avatarUrl,
+    });
 
     res.status(201).json({
       _id: user._id,
@@ -43,7 +48,7 @@ export const login = async (req, res) => {
 
     // If userImage is missing, set it
     if (!user.userImage) {
-      const avatarUrl = `https://api.dicebear.com/9.x/adventurer/svg?seed=${encodeURIComponent(
+      const avatarUrl = `https://api.dicebear.com/9.x/adventurer/png?seed=${encodeURIComponent(
         user.name
       )}`;
       user.userImage = avatarUrl;
