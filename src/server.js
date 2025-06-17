@@ -11,6 +11,8 @@ import authRoutes from "./routes/authRoutes.js";
 import transactionRoutes from "./routes/transactionRoutes.js";
 import job from "./config/cron.js";
 import motivationJob from "./cron/motivationJob.js";
+import emailRoutes from "./routes/emailRoutes.js";
+import weeklyJob from "./cron/weeklyJob.js";
 
 dotenv.config();
 
@@ -20,6 +22,7 @@ const __dirname = path.resolve();
 
 job.start();
 motivationJob.start();
+weeklyJob.start();
 // middleware
 app.use(cors());
 app.use(express.json()); // this middleware will parse JSON bodies: req.body
@@ -34,14 +37,15 @@ app.use(rateLimiter);
 
 app.use("/api/auth", authRoutes);
 app.use("/api/transactions", transactionRoutes);
+app.use("/api/emails", emailRoutes);
 
-if (process.env.NODE_ENV === "production") {
-  app.use(express.static(path.join(__dirname, "../frontend/dist")));
+// if (process.env.NODE_ENV === "production") {
+//   app.use(express.static(path.join(__dirname, "../frontend/dist")));
 
-  app.get("*", (req, res) => {
-    res.sendFile(path.join(__dirname, "../frontend", "dist", "index.html"));
-  });
-}
+//   app.get("*", (req, res) => {
+//     res.sendFile(path.join(__dirname, "../frontend", "dist", "index.html"));
+//   });
+// }
 
 connectDB().then(() => {
   app.listen(port, () => {
