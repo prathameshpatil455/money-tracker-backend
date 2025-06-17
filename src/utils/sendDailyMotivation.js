@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
 import User from "../models/User.js";
 import { sendNotification } from "./sendPushNotification.js";
-import { getRandomMessage } from "./messages.js";
+import getRandomMessage from "./messages.js";
 
 export const sendDailyMotivation = async () => {
   try {
